@@ -458,6 +458,14 @@ body[data-fase="reveal"] .brandfoot{display:none}
   background:#0B0B0B;opacity:calc(var(--dim) * .34);
   transition:opacity .4s var(--e);
 }
+/* Nella sezione della paura il fondo e nero e l'ombra scura non si vede:
+   le carte prendono un alone bianco, cosi il mazzo si stacca dal fondo. */
+body[data-theme="paura"] .fcard{
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.24),
+    0 16px 46px rgba(255,255,255,.20),
+    0 2px 12px rgba(255,255,255,.12);
+}
 .fan-stage.dragging .fcard{transition:opacity .3s}
 
 /* il foglio avorio */
@@ -491,12 +499,6 @@ body[data-fase="reveal"] .brandfoot{display:none}
 @media(min-width:621px){
   .fc-q{-webkit-line-clamp:6}
 }
-.fc-seal{
-  position:absolute;right:clamp(7px,1.7vw,12px);bottom:clamp(6px,1.5vw,11px);
-  width:clamp(24px,6vw,38px);color:var(--red-brand);opacity:.13;pointer-events:none;
-}
-.fc-seal svg{width:100%;height:auto}
-
 /* la fascia rossa con titolo e firma */
 .fc-band{
   flex:1 1 auto;min-height:0;
@@ -612,6 +614,15 @@ body[data-fase="reveal"] .brandfoot{display:none}
 
 .tv-t{padding-right:44px}
 .tv-ta{min-height:128px}
+.tv-nota{
+  margin-top:8px;font-family:var(--font-serif);font-style:italic;
+  font-size:13px;line-height:1.4;opacity:.8;
+}
+/* le richieste arrivate, fra il campo di scrittura e la cartina */
+.tv-muro{margin-top:26px;padding-top:20px;border-top:1px solid rgba(128,128,128,.3)}
+.tv-muro[hidden]{display:none}
+.tv-lista{max-height:min(300px,34dvh);overflow-y:auto;padding-right:4px}
+.tv-lista .rep:last-child{margin-bottom:0}
 
 /* La sagoma dell'Italia sta sempre sotto la card: un velo crema sfocato la
    lascia solo intravedere. Col mouse sopra (o al primo tocco) il velo si
@@ -944,6 +955,7 @@ body[data-fase="reveal"] .brandfoot{display:none}
       <div class="field">
         <label for="tvBody" class="sr">La tua citt&agrave;</label>
         <textarea class="ta tv-ta" id="tvBody" maxlength="600" placeholder="Scrivi qua..."></textarea>
+        <p class="tv-nota">Quello che scrivi si legge qui sotto, insieme alle altre richieste.</p>
       </div>
       <div class="f-foot">
         <span class="count" id="tvCount">0 / 600</span>
@@ -951,6 +963,11 @@ body[data-fase="reveal"] .brandfoot{display:none}
       </div>
       <p class="err" id="tvErr"></p>
     </form>
+
+    <div class="tv-muro" id="tvMuro" hidden>
+      <p class="rep-h">chi ci ha gi&agrave; scritto</p>
+      <div class="tv-lista" id="tvLista"></div>
+    </div>
 
     <button class="mapcard" id="mapCard" aria-label="Scopri dove ci troviamo: apri la mappa delle tappe">
       <span class="mapcard-map" aria-hidden="true"><span class="mapwrap" id="mapMini"></span></span>
@@ -1162,7 +1179,7 @@ const KEY = "postdelcuore.filofobia.v1";
 const state = {
   scene:"reveal", theme:null, view:"registro", sort:"recenti", tag:"tutte", q:"",
   mine:[], reps:{}, citta:[], order:null, nums:{}, openId:null, wTag:null,
-  remote:{lettere:[], risposte:{}}, sync:"spento"
+  remote:{lettere:[], risposte:{}, citta:[]}, sync:"spento"
 };
 
 const $  = (s,r)=> (r||document).querySelector(s);
@@ -1595,6 +1612,7 @@ function visible(){
 }
 function renderArc(){
   const t=state.theme; if(!t) return;
+  potaLocali();
   state.nums=numbering(t);
   const all=forTheme(t);
   const nr=all.reduce((s,l)=>s+repsOf(l).length,0);
@@ -1664,10 +1682,6 @@ const logv = {
 };
 
 /* --- vista VENTAGLIO: mazzo di carte trascinabile ------------------------- */
-/* cuore in filigrana in fondo alla carta */
-const CUORE_SVG='<svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true">'+
-  '<path d="M12 21.2C12 21.2 1.6 14.4 1.6 7.9 1.6 4.3 4.3 1.9 7.2 1.9c1.9 0 3.7 1 4.8 2.7 1.1-1.7 2.9-2.7 4.8-2.7 2.9 0 5.6 2.4 5.6 6 0 6.5-10.4 13.3-10.4 13.3z"/></svg>';
-
 function fanHTML(list){
   const cards=['<button class="fcard fcard-w" data-write="1" data-label="scrivi una lettera">'+
     '<span class="fc-sheet">'+
@@ -1687,7 +1701,6 @@ function fanHTML(list){
       '<span class="fc-sheet">'+
       '<span class="fc-no">'+pad3(state.nums[l.id]||0)+' \u00b7 '+esc(l.tag||"senza etichetta")+'</span>'+
       '<span class="fc-mid"><p class="fc-q">'+esc(excerpt(l.body,170))+'</p></span>'+
-      '<span class="fc-seal" aria-hidden="true">'+CUORE_SVG+'</span>'+
       '</span>'+
       '<span class="fc-band"><span class="fc-txt">'+
       '<span class="fc-t">'+esc(l.title||"Senza titolo")+'</span>'+
@@ -1911,9 +1924,9 @@ async function submitLetter(e){
   toast("Sto mandando la tua lettera all’archivio…");
   try{
     await db.mandaLettera(l);
-    state.mine=state.mine.filter(x=>x.id!==l.id);
+    l.inviata=true; l.inviataIl=new Date().toISOString();
     saveStore();
-    await db.carica();
+    await db.carica();       /* se torna dal database, potaLocali() la ripulisce */
     renderArc();
     toast("La tua lettera è nell’archivio, la vedono tutti.");
   }catch(err){
@@ -1936,8 +1949,9 @@ async function submitReply(e){
   if(!db.attiva()){ toast("Risposta pubblicata su questo dispositivo."); return; }
   try{
     await db.mandaRisposta(l.id, body.slice(0,600), "anonimo");
-    state.reps[l.id]=(state.reps[l.id]||[]).filter(x=>x.id!==rid);
-    if(!state.reps[l.id].length) delete state.reps[l.id];
+    (state.reps[l.id]||[]).forEach(x=>{
+      if(x.id===rid){ x.inviata=true; x.inviataIl=new Date().toISOString(); }
+    });
     saveStore();
     await db.carica();
     const agg=byId(state.openId);
@@ -1970,11 +1984,35 @@ function pinsHTML(vivi){
   }).join("");
 }
 
+/* le richieste arrivate + quelle ancora in attesa di partire da qui */
+function renderCitta(){
+  const box=$("#tvMuro"), el=$("#tvLista");
+  if(!box || !el) return;
+  potaLocali();
+  const remote=state.remote.citta||[];
+  /* se la stessa richiesta e gia tornata dal database, quella del dispositivo
+     non va mostrata di nuovo */
+  const gia=new Set(remote.map(x=>String(x.body||"").trim()));
+  const mie=state.citta
+    .filter(x=>!gia.has(String(x.body||"").trim()))
+    .map(x=>({id:x.id, body:x.body, createdAt:x.createdAt, attesa:!x.inviata}));
+  const tutte=remote.concat(mie)
+    .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+    .slice(0,40);
+  box.hidden = tutte.length===0;
+  el.innerHTML = tutte.map(x=>
+    '<div class="rep"><p>'+esc(x.body).replace(/\n/g,"<br>")+'</p><i>'+
+    when(x.createdAt)+(x.attesa ? " \u00b7 in attesa di partire" : "")+'</i></div>'
+  ).join("");
+}
+
 function openTravel(){
   $("#tvErr").textContent="";
   const mc=$("#mapCard");
   mc.classList.remove("peek"); mc.dataset.peek="0";
+  renderCitta();
   openModal("#travel");
+  if(db.attiva()) db.caricaCitta().then(ok=>{ if(ok) renderCitta(); });
 }
 
 async function submitCity(e){
@@ -1986,12 +2024,25 @@ async function submitCity(e){
   $("#tvBody").value="";
   $("#tvCount").textContent="0 / 600"; $("#tvCount").classList.remove("warn");
   $("#tvErr").textContent="";
+  renderCitta();
   if(!db.attiva()){ toast("Grazie: la tua città è segnata su questo dispositivo."); return; }
   toast("Sto mandando la tua richiesta…");
   try{
     await db.mandaCitta(v.body);
-    state.citta=state.citta.filter(x=>x.id!==v.id); saveStore();
+    v.inviata=true; v.inviataIl=new Date().toISOString();
+    saveStore();
+    const letta=await db.caricaCitta();
+    renderCitta();
     toast("Grazie: la tua richiesta è arrivata.");
+    /* diagnosi per chi mette in piedi il sito: la richiesta e' nel database ma
+       la pagina non riesce a rileggerla, quindi fra tre minuti spariva
+       dall'elenco senza spiegazione */
+    if(letta && !(state.remote.citta||[]).some(x=>String(x.body||"").trim()===v.body.trim())){
+      try{ console.warn("[posto del cuore] richiesta inserita ma non rileggibile: "+
+        "manca la policy di lettura su citta. Esegui in SQL Editor:\n"+
+        'create policy "chiunque legge le richieste" on public.citta for select to anon using (true);\n'+
+        "grant select on public.citta to anon;"); }catch(e){}
+    }
   }catch(err){
     toast("Salvata su questo dispositivo: l’archivio non risponde.");
   }
@@ -2155,6 +2206,83 @@ function daRiga(r){
   };
 }
 
+/* Quello che parte da questo dispositivo NON viene cancellato subito: prende
+   un contrassegno (inviata:true) e resta al suo posto. Cosi resta visibile
+   anche se la rilettura dal database non va a buon fine, e nello stesso tempo
+   non viene rimandato una seconda volta. Quando il database ce lo restituisce
+   la copia locale non serve piu e la si butta qui: se restasse, la stessa
+   lettera si vedrebbe due volte. */
+/* Quanto a lungo una cosa gia partita resta visibile grazie alla copia locale.
+   Serve solo a coprire un inciampo momentaneo nella rilettura: scaduta la
+   finestra, l'unica verita e' il database. Cosi cancellare una riga dal Table
+   Editor la fa sparire davvero, anche a chi l'aveva scritta. */
+const FINESTRA_LOCALE = 180000;   /* tre minuti */
+
+function scadutaLocale(x, ora){
+  if(!x || !x.inviata) return false;          /* non e' ancora partita: si tiene */
+  const t = Date.parse(x.inviataIl || "");
+  return !t || (ora - t) > FINESTRA_LOCALE;   /* senza data, si considera scaduta */
+}
+
+function potaLocali(){
+  let cambiato=false;
+  const ora=Date.now();
+
+  /* 1. le lettere. Una lettera partita da qui torna dal database con un id
+        nuovo: la riconosco dal testo. Le risposte che erano state lasciate
+        sull'id vecchio vanno spostate su quello nuovo, altrimenti restano
+        appese a una lettera che non esiste piu. */
+  const chiave=l=>String(l.theme)+"\u0000"+String(l.body||"").trim();
+  const idRemoto=new Map();
+  (state.remote.lettere||[]).forEach(l=>idRemoto.set(chiave(l), l.id));
+
+  const mine=[];
+  state.mine.forEach(l=>{
+    const nuovo = l.inviata ? idRemoto.get(chiave(l)) : null;
+    if(nuovo){
+      /* tornata dal database: le risposte lasciate sull'id vecchio si spostano */
+      if(state.reps[l.id] && state.reps[l.id].length){
+        state.reps[nuovo]=(state.reps[nuovo]||[]).concat(state.reps[l.id]);
+      }
+      delete state.reps[l.id];
+      cambiato=true;
+      return;
+    }
+    if(scadutaLocale(l, ora)){
+      /* partita ma non torna piu: o e' stata cancellata dall'archivio, o la
+         rilettura non la vede. In entrambi i casi il database ha ragione. */
+      cambiato=true;
+      return;
+    }
+    mine.push(l);
+  });
+  if(cambiato) state.mine=mine;
+
+  /* 2. le risposte gia tornate dal database */
+  const chiaveR=(k,r)=>String(k)+"\u0000"+String(r.body||"").trim();
+  const giaRisposte=new Set();
+  Object.keys(state.remote.risposte||{}).forEach(k=>{
+    (state.remote.risposte[k]||[]).forEach(r=>giaRisposte.add(chiaveR(k,r)));
+  });
+  Object.keys(state.reps).forEach(k=>{
+    const prima=(state.reps[k]||[]);
+    const resta=prima.filter(r=>
+      !(r.inviata && giaRisposte.has(chiaveR(k,r))) && !scadutaLocale(r, ora));
+    if(resta.length!==prima.length){
+      cambiato=true;
+      if(resta.length) state.reps[k]=resta; else delete state.reps[k];
+    }
+  });
+
+  /* 3. le richieste di tappa */
+  const giaCitta=new Set((state.remote.citta||[]).map(x=>String(x.body||"").trim()));
+  const citta=state.citta.filter(v=>
+    !(v.inviata && giaCitta.has(String(v.body||"").trim())) && !scadutaLocale(v, ora));
+  if(citta.length!==state.citta.length){ state.citta=citta; cambiato=true; }
+
+  if(cambiato) saveStore();
+}
+
 const db = {
   cli:null,
 
@@ -2207,6 +2335,7 @@ const db = {
 
       state.remote.lettere=lettere;
       state.remote.risposte=risposte;
+      potaLocali();
       state.sync="ok"; segnale();
       return true;
     }catch(e){
@@ -2245,6 +2374,25 @@ const db = {
   },
 
   /* le richieste di una nuova tappa: solo scrittura, non tornano indietro */
+  /* le richieste di tappa, per mostrarle come commenti sotto il campo */
+  async caricaCitta(){
+    if(!this.attiva()) return false;
+    try{
+      const r=await this.cli.from("citta").select("*")
+        .order("created_at",{ascending:false}).limit(60);
+      if(r.error) throw r.error;
+      state.remote.citta=(r.data||[])
+        .filter(x=>x && x.richiesta)
+        .map(x=>({id:"sc"+x.id, body:String(x.richiesta), createdAt:x.created_at}));
+      potaLocali();
+      return true;
+    }catch(e){
+      /* se manca la policy di lettura non e un errore: semplicemente non
+         torna niente e il muro resta nascosto */
+      return false;
+    }
+  },
+
   async mandaCitta(testo){
     const r=await this.cli.from("citta").insert({richiesta:String(testo||"")});
     if(r.error) throw r.error;
@@ -2256,29 +2404,22 @@ const db = {
     if(!this.attiva()) return;
     if(!state.mine.length && !state.citta.length && !Object.keys(state.reps).length) return;
 
-    const lettere=[];
-    for(const l of state.mine.slice()){
-      try{ await this.mandaLettera(l); }
-      catch(e){ lettere.push(l); }
+    /* niente viene buttato: quello che parte prende il contrassegno, quello
+       che non parte resta senza e riproveremo al caricamento dopo */
+    for(const l of state.mine){
+      if(l.inviata) continue;
+      try{ await this.mandaLettera(l); l.inviata=true; l.inviataIl=new Date().toISOString(); }catch(e){}
     }
-
-    const risposte={};
     for(const k of Object.keys(state.reps)){
-      const restano=[];
       for(const r of (state.reps[k]||[])){
-        try{ await this.mandaRisposta(k, r.body, r.author); }
-        catch(e){ restano.push(r); }
+        if(r.inviata) continue;
+        try{ await this.mandaRisposta(k, r.body, r.author); r.inviata=true; r.inviataIl=new Date().toISOString(); }catch(e){}
       }
-      if(restano.length) risposte[k]=restano;
     }
-
-    const citta=[];
-    for(const v of state.citta.slice()){
-      try{ await this.mandaCitta(v.body); }
-      catch(e){ citta.push(v); }
+    for(const v of state.citta){
+      if(v.inviata) continue;
+      try{ await this.mandaCitta(v.body); v.inviata=true; v.inviataIl=new Date().toISOString(); }catch(e){}
     }
-
-    state.mine=lettere; state.reps=risposte; state.citta=citta;
     saveStore();
   }
 };
