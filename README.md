@@ -1,8 +1,17 @@
 # filofobia: quando amare fa paura
 ### Installazione digitale — POST del cuore · Luna Cucchiaro · 2025/26
 
-`index.html` è l'installazione completa: **un solo file**, nessuna dipendenza da
-installare, nessun backend. Contiene tutte e 4 le fasi della spec.
+Quattro file, nessuna dipendenza da installare, nessun server nostro:
+
+| file | cos'è |
+|---|---|
+| `index.html` | l'installazione completa, tutte e 4 le fasi della spec |
+| `config.js` | **l'unico file da riempire**: indirizzo Supabase, chiave anon, etichette |
+| `supabase.sql` | tabelle, indici e policy da incollare una volta nel SQL Editor di Supabase |
+| `logo.jpeg` | il marchio, sorgente delle maschere incorporate nel CSS |
+
+Senza `config.js` compilato il sito funziona comunque: le lettere restano sul
+dispositivo di chi le scrive. Riempendolo diventano un archivio condiviso.
 
 ---
 
@@ -45,7 +54,10 @@ allo stato iniziale.
 ## 2. Le 4 fasi, come sono state realizzate
 
 **1 · Reveal** — è la prima cosa che si vede entrando: canvas HTML5 con `destination-out`, pennello morbido, pointer
-events unificati (funziona con mouse, dito e pennino). Sotto il nero c'è un
+events unificati (funziona con mouse, dito e pennino). Lo strato è **nero
+pieno**, senza cornici né marchi: in questa fase e nella successiva header e
+footer sono nascosti (`body[data-fase="reveal"]` nel CSS), così la pagina è
+tutta schermo. Sotto il nero c'è un
 manifesto rosso: *QUANDO AMARE FA PAURA* con l'etimologia. La percentuale di
 area pulita viene misurata campionando il canvas: **superato il 34% lo strato si
 apre da solo** con un'onda che parte dai punti già grattati, poi passa da solo
@@ -64,15 +76,23 @@ archivio c'è `← cambia sezione`.
   titolo. La riga attiva si apre in un blocco pieno con l'estratto e la firma;
   si sposta col mouse, con il dito o con il Tab. Il puntino `···` in alto a
   destra apre la lettera intera.
-- **VENTAGLIO**: il mazzo di carte del tuo mockup, centrato e simmetrico. La
-  prima carta è `scrivi una lettera`, le altre si aprono ai due lati schiarendo
-  via via. Si trascina col dito o col mouse, si scorre con le frecce e con la
+- **VENTAGLIO**: il mazzo di carte, centrato e simmetrico. L'impaginato della
+  carta segue il riferimento che mi hai dato: **cornice scura arrotondata**,
+  dentro un **foglio avorio** (65% dell'altezza) con il numero d'archivio e
+  l'etichetta in alto in rosso, la frase della lettera in Georgia corsivo
+  centrata e un cuore in filigrana nell'angolo; sotto, la **fascia rossa** in
+  sfumatura con il titolo in Skia Black Extended bianco e la firma in Georgia.
+  La prima carta è `scrivi una lettera`: foglio ancora bianco con cornice
+  tratteggiata rossa e la penna al centro. Le carte lontane dal centro si
+  spengono. Si trascina col dito o col mouse, si scorre con le frecce e con la
   rotella, la carta al centro si apre con un clic o con Invio.
+  L'altezza del riquadro segue quella delle carte, quindi il mazzo non nuota
+  in uno spazio vuoto a nessuna larghezza.
 
 A destra le etichette con contatore (stile sidebar di every:second), la
 dimensione del testo cresce col numero di lettere. In alto: `scrivi una
-lettera`, ordinamento (recenti / risposte / casuale), ricerca a testo libero e
-l'orologio al secondo che richiama *every : second*.
+lettera`, ordinamento (recenti / risposte / casuale), ricerca a testo libero con
+la lente, e l'orologio al secondo in alto a destra.
 
 ---
 
@@ -94,94 +114,109 @@ Sono scelte, non vincoli: si cambiano tutte in poche righe.
 | Moderazione | pubblicazione immediata (prototipo). Vedi nota sotto |
 | Limite caratteri | 1200 per lettera, 600 per risposta, con contatore |
 | Amore e paura separate? | separate come archivi, ma si passa da una all'altra quando si vuole |
-| Backend o mock? | entrambi: senza configurazione le lettere restano sul dispositivo; collegando il foglio Google (sezione 4) diventano un archivio condiviso |
+| Backend o mock? | Supabase (Postgres gestito), chiamato dal browser con la chiave pubblica `anon`. Senza `config.js` compilato tutto resta sul dispositivo |
 
 ---
 
-## 4. Archivio condiviso: il foglio Google
+## 4. Archivio condiviso: Supabase
 
-Di serie le lettere restano sul dispositivo di chi scrive. Per raccoglierle
-tutte in un posto solo — senza login per chi visita, e con i dati che restano
-tuoi e scaricabili in CSV — servono cinque minuti.
+Il browser parla **direttamente** al database con l'SDK ufficiale di Supabase e
+la chiave pubblica `anon`. Nessun server da tenere in piedi, nessuna funzione da
+scrivere altrove, e il sito resta statico: va bene su GitHub Pages.
 
-**1. Crea il foglio.** Su `sheets.new` fai un foglio nuovo, chiamalo
-`post del cuore`. In basso rinomina la prima scheda in **`lettere`** e
-aggiungine una seconda chiamata **`risposte`**.
+### Passo 1 — crea il progetto
 
-**2. Metti le intestazioni.** Nella scheda `lettere`, riga 1:
+Su **supabase.com** → *New project*. Regione Europa (Frankfurt), password del
+database scelta a caso e messa da parte: quella non serve al sito.
 
-```
-id   tema   titolo   corpo   autore   etichetta   creata   visibile
-```
+### Passo 2 — crea le tabelle
 
-Nella scheda `risposte`, riga 1:
+Nel progetto: **SQL Editor** → *New query*. Incolla **tutto** il contenuto di
+`supabase.sql` e premi **Run**. Una volta sola. Crea tre tabelle — `letters`,
+`replies`, `citta` — con gli indici e le policy di sicurezza.
 
-```
-id   idLettera   corpo   autore   creata   visibile
-```
+Il file è diviso in blocchi commentati: se salti il blocco 2 il sito funziona
+ancora, ma le lettere nuove restano senza titolo e le risposte non vengono
+condivise. Conviene eseguirlo intero.
 
-Se vuoi partire con le 24 lettere già scritte, importa i due file di questa
-cartella: *File > Importa > Carica*, scegli `lettere.csv` (separatore
-punto e virgola, "Sostituisci foglio corrente" sulla scheda giusta) e poi
-`risposte.csv`. Le intestazioni sono già dentro i CSV.
+### Passo 3 — metti le due chiavi in `config.js`
 
-**3. Copia l'ID del foglio.** È il pezzo di indirizzo fra `/d/` e `/edit`:
-`docs.google.com/spreadsheets/d/`**`QUESTO`**`/edit`
+Nel progetto: **Project Settings** (l'ingranaggio) → **Data API**. Copia:
 
-**4. Incolla lo script.** Nel foglio: *Estensioni > Apps Script*. Cancella
-tutto e incolla il contenuto di `google-apps-script.gs` (in questa cartella).
-Nella riga `var ID_FOGLIO = '...'` metti l'ID del punto 3. Salva.
-
-**5. Pubblica.** *Distribuisci > Nuova distribuzione > tipo: App web*, con
-**Esegui come: Me** e **Chi ha accesso: Chiunque**. Alla prima volta Google
-chiede l'autorizzazione: è il tuo script sul tuo foglio, accetta. Copia
-l'indirizzo che finisce con **`/exec`**.
-
-**6. Collega la pagina.** In `index.html`, riga 6 circa, c'è:
+- **Project URL** → in `SUPABASE_URL` (tipo `https://abcdefgh.supabase.co`)
+- la chiave **`anon` public** → in `SUPABASE_ANON_KEY`
 
 ```js
-const ARCHIVIO_URL = "";
+window.POSTO_CONFIG = {
+  SUPABASE_URL: "https://abcdefgh.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOi...",
+  ...
+};
 ```
 
-Incolla l'indirizzo `/exec` fra le virgolette, salva, ricarica su GitHub. Fine.
+Quella chiave **è pubblica e va bene che si veda**: la scarica il browser di
+chiunque visiti il sito. Chi la ha in mano può fare solo quello che le policy
+permettono, cioe leggere le lettere e aggiungerne. La chiave da non mettere mai
+in `config.js` è l'altra, la **`service_role`**: quella apre tutto.
+
+### Passo 4 — pubblica su GitHub Pages
+
+Carica i quattro file nella radice del repository (`index.html`, `config.js`,
+`supabase.sql`, `logo.jpeg`), poi nel repo: **Settings → Pages**, *Source:
+Deploy from a branch*, branch **main** e cartella **/ (root)**, *Save*. Dopo un
+minuto il sito è su `https://<utente>.github.io/<repo>/`.
+
+Non serve build, non serve npm, non serve nient'altro. Per aggiornarlo si
+ricarica il file cambiato.
 
 ### Come si comporta
 
-- Entrando nell'archivio la pagina legge il foglio; sotto al titolo compare
+- Entrando nell'archivio la pagina legge il database; sotto al titolo compare
   *archivio condiviso · N lettere*. Si aggiorna da sé ogni 45 secondi, quindi
   in mostra le lettere degli altri appaiono mentre uno guarda.
-- Chi scrive vede la sua lettera subito; poi parte l'invio. Se il foglio non
-  risponde, la lettera **non va persa**: resta sul dispositivo, il messaggio lo
-  dice chiaramente (non finge che sia andata bene) e al successivo caricamento
-  della pagina viene rimandata.
-- **Moderazione**: nella colonna `visibile` scrivi `FALSE` su una riga e quella
-  lettera smette di comparire, senza cancellarla. Cancellare la riga funziona
-  uguale. È il modo più semplice per gestire l'archivio "paura".
-- **Scaricare tutto**: *File > Scarica > Valori separati da virgole*.
+- Chi scrive vede la sua lettera **subito**, prima che parta l'invio. Se il
+  database non risponde la lettera **non va persa**: resta sul dispositivo, il
+  messaggio lo dice chiaramente (non finge che sia andata bene) e al caricamento
+  successivo viene rimandata. Vale anche per le risposte e per le richieste di
+  nuove tappe.
+- **Moderazione**: dal sito nessuno può modificare o cancellare niente (non
+  esistono policy `update` e `delete`). Per togliere una lettera vai su
+  **Table Editor → letters** e cancella la riga: serve il tuo accesso a
+  Supabase, non basta la chiave pubblica.
+- **Le richieste di nuove tappe** (`citta`) hanno solo la policy di scrittura:
+  dal sito si possono mandare ma **non rileggere**. Contengono nomi e luoghi, è
+  giusto che le veda solo tu, dal Table Editor.
+- **Scaricare tutto**: dal Table Editor di ogni tabella, *Export → CSV*.
 
 ### I limiti, detti chiaramente
 
-L'indirizzo `/exec` è pubblico: chiunque lo trovi può inviare righe al foglio.
-Per un progetto di scuola o una mostra va bene, e lo script accetta solo lettere
-e risposte entro i limiti di lunghezza. Se qualcuno ne abusa, da *Distribuisci >
-Gestisci distribuzioni* puoi archiviare la distribuzione e tutto si ferma: la
-pagina torna a funzionare in locale senza rompersi. Le quote gratuite di Apps
-Script (qualche migliaio di richieste al giorno) sono lontanissime dal traffico
-di un progetto come questo.
+Chiunque trovi la chiave `anon` può inserire righe senza passare dal sito. Per
+un progetto di tesi o una mostra va bene, e i vincoli nello SQL restringono
+molto il danno possibile: la categoria deve essere `amore` o `paura`,
+l'etichetta deve essere una di quelle in elenco, il testo deve stare fra 20 e
+1200 caratteri. Se qualcuno ne abusa, da **Authentication → Policies** puoi
+togliere la policy di `insert` in un clic: il sito continua a funzionare, in
+sola lettura, senza rompersi.
 
-Se in futuro ti serve qualcosa di più solido — più visitatori insieme,
-cancellazioni, statistiche — la stessa struttura dati funziona identica su
-Supabase: cambia solo l'indirizzo e due righe nella funzione di invio.
+Il piano gratuito di Supabase (500 MB di database, 5 GB di traffico al mese) è
+lontanissimo dal traffico di un progetto come questo. Attenzione a una cosa
+sola: **i progetti gratuiti vanno in pausa dopo una settimana senza richieste**
+e vanno risvegliati a mano dalla dashboard. Prima di una presentazione, apri il
+sito il giorno prima.
+
+Una nota sull'SDK: è l'unico file che il sito prende da fuori
+(`cdn.jsdelivr.net`, versione fissata con la sua impronta `integrity`, quindi
+non può cambiare sotto i piedi). Se quel file non arriva — rete assente, CDN
+bloccato — la pagina non si rompe: parte in modalità locale.
 
 ---
 
 ### Due cose da valutare prima di una vera messa in mostra
 
-1. **Persistenza.** Ora ogni device vede solo le proprie lettere in aggiunta a
-   quelle di partenza: perfetto per la presentazione, ma non è un archivio
-   collettivo. Per farlo diventare condiviso servono un database e un endpoint
-   (Supabase o Firebase bastano, sono ~40 righe da aggiungere: la struttura dati
-   nel file è già quella della spec, `Letter` + `Reply`).
+1. **Risvegliare il progetto Supabase.** Il piano gratuito mette in pausa il
+   database dopo una settimana di inattività. Non si perde niente, ma il primo
+   che apre il sito vede *archivio non raggiungibile*: apri la dashboard e
+   riattivalo il giorno prima della presentazione.
 2. **Moderazione.** Nell'archivio "paura" può arrivare materiale delicato. Con
    pubblicazione immediata e senza moderazione, in una mostra pubblica il rischio
    è concreto. Nel form c'è una riga di cura, ma **se il progetto va online
@@ -203,29 +238,76 @@ Tutto è dentro `index.html`, in sezioni numerate e commentate.
   fondo nero, testo chiaro, rosso come unico accento — la stessa installazione a
   due temperature. Se preferisci il fondo bianco anche lì, cancella il blocco CSS
   `body[data-theme="paura"]{…}` (una decina di righe, è segnalato da un commento).
-- **Le lettere di partenza.** Sezione `1. DATI` del JS: array `SEEDS`. Le ho
-  scritte io come segnaposto — **sostituiscile con testi tuoi o raccolti**, il
-  formato è evidente. Le etichette dei due archivi sono nell'oggetto `TAGS`.
+- **Le lettere di partenza.** Sezione `1. DATI` del JS: array `SEEDS`, 30 lettere
+  (15 per sezione) scritte come storie compiute. Sono segnaposto —
+  **sostituiscile con testi tuoi o raccolti**, il formato è evidente. Le
+  anteprime tagliano a fine frase, non a metà riga, così ogni carta si legge
+  come un pensiero finito.
+- **Le etichette.** Stanno in `config.js`, oggetto `ETICHETTE`, in un posto
+  solo:
+  **amore** — primo amore, quotidianità, ritorni, distanza, dialogo, lettere mai
+  spedite, gratitudine, sogni;
+  **paura** — abbandono, vulnerabilità, rifiuto, silenzio, attaccamento, fuga,
+  gelosia, ricominciare.
+  Nel form ne va scelta **esattamente una**: senza etichetta la lettera non
+  parte, e il database la rifiuterebbe comunque. Se le cambi, cambia anche il
+  vincolo `etichetta_valida` in `supabase.sql` (c'è il come, al punto 5 di quel
+  file): i due elenchi devono dire la stessa cosa.
 - **Logo.** È il tuo `logo.jpeg`. Dato che il marchio è nero + rosso su bianco e
   gli archivi hanno fondo rosso e nero, l'immagine è stata separata in due
   maschere (la scritta e il cuore) incorporate nel CSS: le forme sono le tue,
   ma il colore lo decide la sezione — nero e rosso su bianco, bianco e nero su
   rosso, bianco e rosso su nero. Per rigenerarle da un logo nuovo serve solo
   ripetere la separazione; `logo.jpeg` resta nella cartella come sorgente.
-- **Font.** Titoli, bottoni ed etichette: **Skia**, incorporato nel file in
-  base64 (nessuna richiesta esterna, il sito funziona anche offline). Testo da
-  leggere: **Georgia**, presente su tutti i sistemi.
-  Da sapere: il file `Skia.ttf` che hai scaricato contiene **solo il taglio
-  Regular** — nessun asse variabile, quindi il *Black Extended* non c'è. Il
-  neretto dei titoli è sintetizzato dal browser e ho aggiunto un contorno
-  sottilissimo (`--dstroke`, in cima al CSS) per restituire il peso da
-  manifesto. Se trovi il vero taglio Black Extended, si sostituisce solo il
-  blocco `@font-face` e si azzera `--dstroke`.
+- **Font — Skia Black Extended.** Titoli, bottoni ed etichette usano Skia nel
+  taglio **Black Extended**: `font-weight:900` e `font-stretch:125%` su tutto
+  ciò che è Skia. Testo da leggere: **Georgia**, presente su tutti i sistemi.
+  Come ci arriva, in due strade:
+  1. su **macOS** Skia esiste come font di sistema **variabile** (assi peso e
+     larghezza). Il primo `@font-face` del file la dichiara come famiglia a sé
+     (`'Skia Sistema'`, `src:local('Skia')`, `font-weight:100 900`,
+     `font-stretch:62.5% 125%`): lì il Black Extended è quello **vero**;
+  2. altrove quella famiglia resta vuota e si passa al file base64 incorporato
+     (`'Skia'`), che contiene **solo il Regular**: il nero lo sintetizza il
+     browser e un contorno sottilissimo (`--dstroke`, in cima al CSS) restituisce
+     il peso da manifesto. La spaziatura dei titoli è stata allargata perché
+     l'*extended* non venisse strozzato da un tracking troppo stretto.
+  Se ottieni il file del vero Black Extended, basta sostituire il base64 del
+  secondo `@font-face` e azzerare `--dstroke`.
   Il font viene da onlinewebfonts.com con licenza CC BY 4.0 che chiede il
   credito: il rimando è nel commento sopra il `@font-face`, valuta se metterlo
   anche in una pagina di crediti.
 - **Numeri delle lettere.** `001, 002…` assegnati per data di arrivo: la lettera
   numero 1 è la più vecchia dell'archivio, come in uno schedario reale.
+- **Fai viaggiare il progetto.** Bottone bianco con contorno rosso scuro
+  (`--red-dark:#920000`), **sotto le due categorie nella schermata della
+  scelta** (fase 2). Apre una scheda con la domanda *"Vuoi il Posto del Cuore
+  nella tua città? Scrivici qui."* (titolo in Skia Black Extended), un campo
+  libero (placeholder `Scrivi qua...`, corpo in Georgia) e l'invio in stile
+  outline. Sotto, la **card della cartina**: la cartina sta sempre sullo sfondo,
+  coperta da un velo crema semitrasparente e sfocato che la lascia solo
+  intravedere, con sopra *"Scopri dove ci troviamo"* in Skia Black Extended
+  rosso. Col mouse sopra il velo si dirada in ~380 ms e la cartina diventa
+  nitida; su telefono, dove l'hover non esiste, **il primo tocco svela** e il
+  secondo apre. Al clic si apre **a schermo pieno**: si trascina, si zooma con
+  rotella o due dita (1×–6×), i segnaposti sono cliccabili e mostrano città,
+  data e descrizione; si chiude con la ✕ in alto o toccando fuori, e si torna
+  alla scheda precedente (le modali sono impilate).
+- **La cartina** è un SVG disegnato nel file (`mappaSVG()`), nessuna immagine e
+  nessuna libreria: **solo tratto**, contorno dell'Italia più i confini delle
+  venti regioni, tutto in rosso scuro `#920000` su fondo avorio, come il
+  riferimento. I confini interni sbordano di proposito e vengono tagliati sulla
+  costa da un `clipPath` che usa la sagoma stessa, così le linee arrivano
+  esattamente sul contorno senza lasciare buchi. I segnaposti sono il **cuore
+  del marchio** con occhi e sorriso, con la punta sulla città.
+- **Le tappe** stanno nell'array `TAPPE` in cima al JS: **Tolmezzo, Udine,
+  Verona, Firenze**. Le città sono quelle giuste; **data e descrizione sono da
+  scrivere** (campi `d` e `t`, ora contengono un promemoria). `x` e `y` sono la
+  posizione sulla sagoma in percentuale, `lab` sposta l'etichetta a fianco
+  (`sx` / `dx`) invece che sopra — serve a Tolmezzo e Udine, che sono vicine.
+  Le richieste di nuove tappe finiscono nella tabella `citta` di Supabase e le
+  leggi dal Table Editor; se il database non risponde restano sul dispositivo e
+  partono al caricamento dopo.
 
 ## 6. Note tecniche
 
@@ -234,7 +316,12 @@ Tutto è dentro `index.html`, in sezioni numerate e commentate.
   `Tab`; i fogli del muro si aprono con `Invio`.
 - Rispetta `prefers-reduced-motion`: chi ha le animazioni ridotte nel sistema
   operativo vede il muro senza 3D e senza transizioni lunghe.
-- Il testo scritto dal pubblico viene sempre ripulito prima di essere mostrato
-  (nessun HTML iniettabile nelle lettere).
-- Niente cookie, niente tracciamento, niente chiamate a server esterni: le
-  uniche richieste in rete sono i font.
+- Il testo scritto dal pubblico viene sempre ripulito prima di essere mostrato:
+  niente `innerHTML` con contenuto altrui, quindi nessun HTML iniettabile né
+  dalle lettere né dalle risposte né dai dati che arrivano dal database.
+- Niente cookie e niente tracciamento. Le uniche richieste verso l'esterno sono
+  l'SDK di Supabase (`cdn.jsdelivr.net`, versione fissa con `integrity`) e le
+  chiamate al proprio database. I font sono incorporati nel file.
+- Nessun account e nessun login: la sessione di Supabase è disattivata
+  (`persistSession:false`), quindi non viene scritto niente nel browser a parte
+  le lettere in attesa di partire.
