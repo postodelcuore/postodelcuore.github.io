@@ -60,10 +60,13 @@ footer sono nascosti (`body[data-fase="reveal"]` nel CSS), così la pagina è
 tutta schermo. Sotto il nero c'è un
 manifesto rosso: *QUANDO AMARE FA PAURA* con l'etimologia. La percentuale di
 area pulita viene misurata campionando il canvas: **superato il 34% lo strato si
-apre da solo** con un'onda che parte dai punti già grattati, poi passa da solo
-alla fase 3. C'è un `salta →` che compare dopo 5 secondi (serve anche per chi
+apre da solo** con un'onda che parte dai punti già grattati. Da lì in poi **non
+succede più niente da solo**: il manifesto rosso resta fermo sullo schermo e si
+passa alla fase 3 solo quando l'utente tocca (o clicca) in qualunque punto —
+l'etichetta in basso diventa `tocca per continuare` e il bottone diventa
+`entra →`. C'è un `salta →` che compare dopo 5 secondi (serve anche per chi
 non può usare il gesto) e un suono di graffio generato via Web Audio, con
-interruttore in alto a destra.
+interruttore in alto a destra: quello è l'unico punto che non fa cambiare fase.
 
 **2 · Scelta del tema** — ricostruita sullo screenshot di riferimento, solo le
 due scritte senza numeri. Al clic il rettangolo si espande a schermo intero nel
@@ -92,7 +95,8 @@ archivio c'è `← cambia sezione`.
 A destra le etichette con contatore (stile sidebar di every:second), la
 dimensione del testo cresce col numero di lettere. In alto: `scrivi una
 lettera`, ordinamento (recenti / risposte / casuale), ricerca a testo libero con
-la lente, e l'orologio al secondo in alto a destra.
+la lente. La riga con `← cambia sezione` e l'orologio al secondo sta **fuori
+dallo scroller** (`.arc-bar`): resta ferma in cima mentre l'archivio scorre sotto.
 
 ---
 
@@ -104,6 +108,7 @@ Sono scelte, non vincoli: si cambiano tutte in poche righe.
 |---|---|
 | Serve una landing prima del gratta? | No: si entra direttamente sullo strato nero |
 | Soglia autocompletamento | 34% dell'area (3 passate su desktop, 4-5 col dito) — variabile `thr` nel codice |
+| Dopo la soglia si passa da solo? | No: lo strato si apre da solo, poi il manifesto resta finché non lo si tocca |
 | Cosa c'è sotto il nero | manifesto rosso con l'etimologia di *filofobia* |
 | Suono / vibrazione | suono di graffio + campanella all'apertura, vibrazione su mobile; interruttore visibile |
 | La scelta del tema è reversibile? | sì, `← cambia sezione` |
@@ -301,10 +306,15 @@ Tutto è dentro `index.html`, in sezioni numerate e commentate.
   esattamente sul contorno senza lasciare buchi. I segnaposti sono il **cuore
   del marchio** con occhi e sorriso, con la punta sulla città.
 - **Le tappe** stanno nell'array `TAPPE` in cima al JS: **Tolmezzo, Udine,
-  Verona, Firenze**. Le città sono quelle giuste; **data e descrizione sono da
-  scrivere** (campi `d` e `t`, ora contengono un promemoria). `x` e `y` sono la
-  posizione sulla sagoma in percentuale, `lab` sposta l'etichetta a fianco
-  (`sx` / `dx`) invece che sopra — serve a Tolmezzo e Udine, che sono vicine.
+  Verona, Firenze**. `x` e `y` sono la posizione sulla sagoma in percentuale,
+  `lab` sposta l'etichetta a fianco (`sx` / `dx`) invece che sopra — serve a
+  Tolmezzo e Udine, che sono vicine. `d` è la riga sotto al nome della città:
+  per Tolmezzo è `Piazza XX settembre`, per Firenze `Manifattura Tabacchi`, per
+  Udine e Verona resta `data e luogo da definire`. `img` è il **mockup della
+  tappa**, un file dentro `foto/` (vedi `foto/LEGGIMI.txt`): compare nella
+  scheda del segnaposto sotto il nome del luogo, e **se il file manca la scheda
+  resta pulita** invece di mostrare un'immagine rotta. Per dare una foto anche
+  a Udine o Verona basta metterla in `foto/` e aggiungere il campo `img`.
   Le richieste di nuove tappe finiscono nella tabella `citta` di Supabase e le
   leggi dal Table Editor; se il database non risponde restano sul dispositivo e
   partono al caricamento dopo.
