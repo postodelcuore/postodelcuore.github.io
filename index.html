@@ -217,6 +217,14 @@ body[data-fase="reveal"] .brandfoot{display:none}
 }
 #scratch{position:absolute;left:0;top:0;width:100%;height:100%;z-index:3;touch-action:none;cursor:crosshair;transition:opacity .6s var(--e)}
 .reveal.done #scratch{cursor:default}
+/* Superata la soglia lo strato nero se ne va, ma il manifesto rosso resta:
+   da lì in poi non succede più niente da solo, si va avanti solo al tocco. */
+.reveal.aperto{cursor:pointer}
+.reveal.aperto #scratch{pointer-events:none}
+/* il `difference` serviva a far leggere questi due sul nero; ora che restano
+   sul rosso in attesa del tocco, tornano bianchi pieni */
+.reveal.aperto .snd,
+.reveal.aperto .rev-lab{mix-blend-mode:normal}
 .rev-ui{
   position:absolute;left:0;right:0;bottom:0;z-index:5;
   padding:var(--pad);display:flex;flex-direction:column;gap:9px;
@@ -291,7 +299,16 @@ body[data-fase="reveal"] .brandfoot{display:none}
 
 /* ================= FASE 4 — ARCHIVIO =================================== */
 .arc{padding-top:clamp(10px,2vh,18px)}
-.arc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:clamp(8px,1.6vh,14px)}
+/* La fascia con «cambia sezione» e l'orologio vive fuori dallo scroller:
+   resta ferma in cima all'archivio mentre le lettere scorrono sotto. */
+.arc-bar{
+  flex:0 0 auto;position:relative;z-index:40;
+  background:var(--paper);transition:background-color .7s var(--e);
+  padding-bottom:clamp(7px,1.4vh,12px);
+}
+.arc-bar::after{content:"";position:absolute;left:var(--pad);right:var(--pad);bottom:0;height:1px;background:currentColor;opacity:.18}
+.arc .scroller{padding-top:clamp(8px,1.6vh,14px)}
+.arc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .back{
   font-family:var(--font-mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
   opacity:.85;display:inline-flex;align-items:center;gap:7px;transition:opacity .25s,gap .25s
@@ -755,6 +772,14 @@ body[data-theme="paura"] .fcard{
   text-transform:uppercase;opacity:.78;margin-top:3px;
 }
 .pinbox p{font-family:var(--font-serif);font-size:14.5px;line-height:1.4;margin-top:9px}
+.pinbox p[hidden],.pinbox span[hidden]{display:none}
+/* con il mockup della tappa la scheda si alza: non deve mai uscire dalla mappa */
+.pinbox{max-height:calc(100% - clamp(20px,4.8vw,36px));overflow-y:auto;overscroll-behavior:contain}
+.pinfoto{
+  display:block;width:100%;height:auto;margin-top:11px;border-radius:9px;
+  border:1.4px solid var(--lettera-ink);
+}
+.pinfoto[hidden]{display:none}
 .pinx{
   margin-top:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
   text-transform:uppercase;opacity:.75;border-bottom:1px solid currentColor;
@@ -832,12 +857,17 @@ body[data-theme="paura"] .fcard{
 
   <!-- ============ FASE 4 — ARCHIVIO ============ -->
   <section class="scene arc" id="sc-arc" aria-labelledby="arcTitle">
-    <div class="scroller">
+    <!-- fascia ferma: non scorre mai con l'archivio -->
+    <div class="arc-bar">
       <div class="wrap-wide">
         <div class="arc-top">
           <button class="back" data-nav="choice"><span aria-hidden="true">&larr;</span> cambia sezione</button>
           <div class="tick"><b id="tickD">&nbsp;</b><span id="tickT">&nbsp;</span></div>
         </div>
+      </div>
+    </div>
+    <div class="scroller">
+      <div class="wrap-wide">
         <h2 class="arc-title" id="arcTitle">lettere</h2>
         <div class="arc-sub">
           <span id="arcCount"></span>
@@ -987,7 +1017,9 @@ body[data-theme="paura"] .fcard{
     <div class="mapfull-stage" id="mapStage">
       <div class="mapfull-pan" id="mapPan"><div class="mapwrap" id="mapBig"></div></div>
       <div class="pinbox" id="pinBox" hidden>
-        <b id="pinC"></b><span id="pinD"></span><p id="pinT"></p>
+        <b id="pinC"></b><span id="pinD"></span>
+        <img class="pinfoto" id="pinF" alt="" hidden>
+        <p id="pinT"></p>
         <button class="pinx" id="pinX" type="button">chiudi</button>
       </div>
     </div>
@@ -1150,15 +1182,19 @@ body:"Ho ancora il biglietto del cinema di novembre, la sua felpa, due bicchieri
 ];
 
 /* Le quattro tappe segnate sulla cartina di "fai viaggiare il progetto".
-   Le città sono quelle vere; DATA E DESCRIZIONE SONO DA SCRIVERE (i campi d
-   e t qui sotto). x e y sono la posizione sulla sagoma, in percentuale;
-   lab sposta l'etichetta a fianco ("sx" / "dx") invece che sopra, per non
-   far scontrare Tolmezzo e Udine. */
+   x e y sono la posizione sulla sagoma, in percentuale; lab sposta l'etichetta
+   a fianco ("sx" / "dx") invece che sopra, per non far scontrare Tolmezzo e
+   Udine. d e la riga sotto al nome della citta: per le tappe gia fissate e il
+   luogo, per le altre resta "data e luogo da definire". img e il mockup della
+   tappa: il file va messo nella cartella foto/ con esattamente questo nome, e
+   se manca la scheda resta pulita invece di mostrare un'immagine rotta. */
 const TAPPE = [
- {c:"Tolmezzo", x:53.36, y:8.29, lab:"sx", d:"data da definire", t:"Due righe su questa tappa: quando, dove, com\u2019è andata."},
- {c:"Udine", x:55.15, y:11.43, lab:"dx", d:"data da definire", t:"Due righe su questa tappa: quando, dove, com\u2019è andata."},
- {c:"Verona", x:36.87, y:17.14, lab:"", d:"data da definire", t:"Due righe su questa tappa: quando, dove, com\u2019è andata."},
- {c:"Firenze", x:39.07, y:32.53, lab:"", d:"data da definire", t:"Due righe su questa tappa: quando, dove, com\u2019è andata."},
+ {c:"Tolmezzo", x:53.36, y:8.29, lab:"sx", d:"Piazza XX settembre",
+  img:"foto/tolmezzo-piazza-xx-settembre.jpg"},
+ {c:"Udine", x:55.15, y:11.43, lab:"dx", d:"data e luogo da definire"},
+ {c:"Verona", x:36.87, y:17.14, lab:"", d:"data e luogo da definire"},
+ {c:"Firenze", x:39.07, y:32.53, lab:"", d:"Manifattura Tabacchi",
+  img:"foto/firenze-manifattura-tabacchi.jpg"},
 ];
 
 /* La cartina: contorno dell'Italia e confini delle regioni, tutto a tratto
@@ -1346,7 +1382,7 @@ function syncUrl(){
    ========================================================================= */
 const rev = {
   cv:null, ctx:null, samp:null, sctx:null,
-  dpr:1, w:0, h:0, drawing:false, done:false, mounted:false,
+  dpr:1, w:0, h:0, drawing:false, done:false, opened:false, mounted:false,
   last:null, marks:[], ratio:0, thr:.34, tS:0, tA:0, raf:0, skipT:null,
 
   get r(){ return Math.max(24, Math.min(66, Math.min(this.w,this.h)*.078)); },
@@ -1366,19 +1402,26 @@ const rev = {
       this.ro=new ResizeObserver(()=>{ if(state.scene==="reveal") this.resize(false); });
       this.ro.observe(this.cv);
     }
+    /* una volta scoperto, il passo successivo lo decide l'utente: un tocco o un
+       clic in qualunque punto del manifesto porta alla scelta del tema */
+    $("#sc-reveal").addEventListener("click", e=>{
+      if(e.target.closest("#btnSnd")) return;   /* l'audio è un comando a sé */
+      if(this.opened) this.entra();
+    });
     this.mounted=true;
   },
   start(){
     if(!this.mounted) this.mount();
-    this.done=false; this.ratio=0; this.marks=[]; this.last=null; this.drawing=false;
+    this.done=false; this.opened=false; this.ratio=0; this.marks=[]; this.last=null; this.drawing=false;
     this.cv.style.opacity="1";
-    $("#sc-reveal").classList.remove("done");
+    $("#sc-reveal").classList.remove("done","aperto");
     $("#revBar").style.width="0%";
     $("#revLab").textContent="gratta per scoprire";
     this.resize(true);
     requestAnimationFrame(()=>{ if(state.scene==="reveal") this.resize(true); });
     clearTimeout(this.skipT);
     $("#btnSkip").classList.remove("show");
+    $("#btnSkip").textContent="salta →";
     this.skipT=setTimeout(()=>$("#btnSkip").classList.add("show"), 5200);
   },
   stop(){
@@ -1534,18 +1577,33 @@ const rev = {
         if(ee>0) this.stamp(m.x, m.y, maxR*ee*.44);
       });
       if(k<1){ this.raf=requestAnimationFrame(step); }
-      else {
-        this.cv.style.opacity="0";
-        setTimeout(()=>{ if(state.scene==="reveal") go("choice"); }, 660);
-      }
+      else { this.apri(); }
     };
     this.raf=requestAnimationFrame(step);
     /* rete di sicurezza: se requestAnimationFrame non gira (tab in background,
-       browser che non compone frame) si passa comunque alla fase successiva */
+       browser che non compone frame) il manifesto si scopre lo stesso */
     clearTimeout(this.safeT);
-    this.safeT=setTimeout(()=>{
-      if(state.scene==="reveal"){ this.cv.style.opacity="0"; go("choice"); }
-    }, dur+1250);
+    this.safeT=setTimeout(()=>{ this.apri(); }, dur+1250);
+  },
+
+  /* Lo strato nero è sparito. Da qui non parte nessun timer: il manifesto
+     rosso resta fermo sullo schermo finché non lo si tocca. */
+  apri(){
+    if(this.opened) return;
+    this.opened=true;
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.safeT);
+    this.cv.style.opacity="0";
+    $("#sc-reveal").classList.add("aperto");
+    $("#revLab").textContent="tocca per continuare";
+    const b=$("#btnSkip");
+    b.textContent="entra →";
+    b.classList.add("show");
+  },
+
+  entra(){
+    if(!this.opened) return;
+    if(state.scene==="reveal") go("choice");
   }
 };
 
@@ -2084,6 +2142,8 @@ const mappa = {
       if(z==="0") this.reset(); else this.zoom(z==="+" ? 1.5 : 1/1.5, 0, 0);
     });
     $("#pinX").addEventListener("click", ()=>this.chiudiPin());
+    /* se il mockup non c'e ancora (o non si carica) la scheda resta pulita */
+    $("#pinF").addEventListener("error", e=>{ e.target.hidden=true; });
 
     /* sul telefono l'hover non esiste: il primo tocco svela la mappa nitida,
        il secondo la apre */
@@ -2162,9 +2222,17 @@ const mappa = {
     $$(".pin", this.pan).forEach(p=>p.classList.remove("on"));
     if(el) el.classList.add("on");
     $("#pinC").textContent=t.c;
-    $("#pinD").textContent=t.d;
-    $("#pinT").textContent=t.t;
-    $("#pinBox").hidden=false;
+    const d=$("#pinD"); d.textContent=t.d||""; d.hidden=!t.d;
+    const p=$("#pinT"); p.textContent=t.t||""; p.hidden=!t.t;
+    const f=$("#pinF");
+    if(t.img){
+      f.alt="Il totem del post* del cuore a "+t.c+(t.d?", "+t.d:"");
+      f.src=t.img; f.hidden=false;
+    } else {
+      f.hidden=true; f.removeAttribute("src"); f.alt="";
+    }
+    const box=$("#pinBox");
+    box.hidden=false; box.scrollTop=0;
   },
   chiudiPin(){
     const b=$("#pinBox"); if(b) b.hidden=true;
